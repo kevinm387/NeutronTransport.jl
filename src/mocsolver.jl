@@ -392,3 +392,14 @@ function residual(sol::MoCSolution{T}, prob::MoCProblem) where {T}
 
     return ϵ
 end
+
+"""
+    get_cell_φ(sol, cell, g)
+
+Returns the average φ in a given cell and energy group.
+"""
+function get_cell_φ(sol::MoCSolution{T}, cell::Int, g::Int) where T
+    φs = sol(g)[findall(c -> c == cell, sol.prob.fsr_tag)]
+    mean_φ = sum(φs)/length(φs)
+    return mean_φ
+end
