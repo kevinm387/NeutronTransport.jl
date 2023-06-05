@@ -267,12 +267,12 @@ function compute_q!(sol::MoCSolution{T}, prob::MoCProblem, fixed_sources::Matrix
     NRegions = nregions(prob)
     @unpack keff, φ, q = sol
 
-    @inbounds for i in 1:NRegions
+    @inbounds Threads.@threads for i in 1:NRegions
         xs = getxs(prob, i)
         @unpack χ, Σt, νΣf, Σs0 = xs
         fissionable = isfissionable(xs)
 
-        for g in 1:NGroups
+        Threads.@threads for g in 1:NGroups
             ig = @region_index(i, g)
             qig = zero(T)
             for g′ in 1:NGroups
@@ -290,7 +290,7 @@ function compute_q!(sol::MoCSolution{T}, prob::MoCProblem, fixed_sources::Matrix
             qig += fixed_sources[i,g]
             qig /= (4π * Σt[g])
             if qig < 0.0
-                qig = 1e-10
+                qig = 1e-12
             end
             q[ig] = qig
         end
@@ -306,7 +306,7 @@ function compute_φ!(sol::MoCSolution{T}, prob::MoCProblem) where {T}
     set_uniform_φ!(sol, zero(T))
     update_boundary_ψ!(sol) # update entry ψ for all rays (including d, p and g dependence)
 
-    for track in tracks_by_uid
+    Threads.@threads for track in tracks_by_uid
         tally!(sol, prob, track, Forward)
         tally!(sol, prob, track, Backward)
     end
@@ -422,14 +422,14 @@ function add_q_to_φ!(sol::MoCSolution, prob::MoCProblem)
         xs = getxs(prob, i)
         @unpack Σt = xs
         if volumes[i] < 1e-12 # deal with zero volume FSRs
-            volumes[i] = 1e30
+            volumes[i] = 1e-12
         end
         for g in 1:NGroups
             ig = @region_index(i, g)
             φ[ig] /= (Σt[g] * volumes[i])
             φ[ig] += (4π * q[ig]) 
             if φ[ig] < 0.0
-                φ[ig] = 1e-10
+                φ[ig] = 1e-12
             end
         end
     end
