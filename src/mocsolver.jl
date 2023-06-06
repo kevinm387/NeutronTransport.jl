@@ -416,14 +416,12 @@ function add_q_to_φ!(sol::MoCSolution, prob::MoCProblem)
     @unpack trackgenerator = prob
     @unpack volumes = trackgenerator
 
-    @inbounds for i in 1:NRegions
+    @inbounds Threads.@threads for i in 1:NRegions
         xs = getxs(prob, i)
         @unpack Σt = xs
-        volume = volumes[i]
-        volume = volume < MIN_VOLUME ? 1e30 : volume
-        for g in 1:NGroups
+        Threads.@threads for g in 1:NGroups
             ig = @region_index(i, g)
-            φ[ig] /= (Σt[g] * volume)
+            φ[ig] /= (Σt[g] * volumes[i])
             φ[ig] += (4π * q[ig]) 
             φ[ig] = φ[ig] < MIN_φ ? MIN_φ : φ[ig]
         end
