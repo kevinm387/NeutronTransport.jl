@@ -289,7 +289,7 @@ function compute_q!(sol::MoCSolution{T}, prob::MoCProblem, fixed_sources::Matrix
         end
     end
 
-    @inbounds for g in 1:NGroups
+    @inbounds Threads.@threads for g in 1:NGroups
         for i in 1:NRegions
             ig = @region_index(i, g)
             q[ig] += fixed_sources[i, g]
@@ -312,7 +312,7 @@ function compute_φ!(sol::MoCSolution{T}, prob::MoCProblem) where {T}
     set_uniform_φ!(sol, zero(T))
     update_boundary_ψ!(sol) # update entry ψ for all rays (including d, p and g dependence)
 
-    for track in tracks_by_uid
+    Threads.@threads for track in tracks_by_uid
         tally!(sol, prob, track, Forward)
         tally!(sol, prob, track, Backward)
     end
@@ -426,7 +426,7 @@ function add_q_to_φ!(sol::MoCSolution, prob::MoCProblem)
     volumes_copy = deepcopy(volumes)
     volumes_copy[volumes_copy .<= MIN_VOLUME] .= 1e30
 
-    @inbounds for i in 1:NRegions
+    @inbounds Threads.@threads for i in 1:NRegions
         xs = getxs(prob, i)
         @unpack Σt = xs
         for g in 1:NGroups
