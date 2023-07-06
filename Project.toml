@@ -5,6 +5,7 @@ version = "0.2.0"
 
 [deps]
 Gridap = "56d4f2e9-7ea1-5844-9cf6-b9c51ca7ce8e"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 RayTracing = "3007c720-8091-40db-9339-e09e4eb4c7ea"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"

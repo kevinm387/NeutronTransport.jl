@@ -3,6 +3,8 @@ import RayTracing:
     DirectionType, Forward, Backward,
     universal_id, bc_fwd, bc_bwd, dir_next_track_fwd, dir_next_track_bwd
 
+import LinearAlgebra: dot
+
 # TODO: Gridap solution object might be useful for interpolation at any point in space...
 struct MoCSolution{T<:Real,P<:MoCProblem} <: TransportSolution
     prob::P
@@ -266,31 +268,37 @@ function compute_q!(sol::MoCSolution{T}, prob::MoCProblem, fixed_sources::Matrix
     NGroups = ngroups(prob)
     NRegions = nregions(prob)
     @unpack keff, φ, q = sol
+    φtmp = Vector{T}(undef, NGroups)
 
-    @inbounds Threads.@threads for i in 1:NRegions
+    @inbounds for i in 1:NRegions
         xs = getxs(prob, i)
         @unpack χ, Σt, νΣf, Σs0 = xs
         fissionable = isfissionable(xs)
 
-        Threads.@threads for g in 1:NGroups
+        for g′ in 1:NGroups
+            φtmp[g′] = φ[@region_index(i, g′)]
+        end
+
+        for g in 1:NGroups
             ig = @region_index(i, g)
-            qig = zero(T)
-            for g′ in 1:NGroups
-                ig′ = @region_index(i, g′)
-                qig += Σs0[g′, g] * φ[ig′]
-                if fissionable
-                    qig += 1 / keff * χ[g] * νΣf[g′] * φ[ig′]
-                end
+            @views cΣs0 = Σs0[:, g]
+            q[ig] = dot(cΣs0, φtmp)
+            if fissionable
+                q[ig] += sum(1 / keff * χ[g] * νΣf[g′] * φtmp[g′] for g′ in 1:NGroups)
             end
-            # qig = sum(
-            #     Σs0[g′, g] * φ[@region_index(i, g′)] +
-            #     1 / keff * χ[g] * νΣf[g′] * φ[@region_index(i, g′)]
-            #     for g′ in 1:NGroups
-            # )
-            qig += fixed_sources[i,g]
-            qig /= (4π * Σt[g])
-            qig = qig < MIN_q ? MIN_q : qig
-            q[ig] = qig
+        end
+    end
+
+    @inbounds for g in 1:NGroups
+        for i in 1:NRegions
+            ig = @region_index(i, g)
+            q[ig] += fixed_sources[i, g]
+            
+            xs = getxs(prob, i)
+            @unpack χ, Σt, νΣf, Σs0 = xs
+            q[ig] /= 4π * Σt[g]
+
+            (q[ig] < MIN_q) && (q[ig] = MIN_q)
         end
     end
 
@@ -304,7 +312,7 @@ function compute_φ!(sol::MoCSolution{T}, prob::MoCProblem) where {T}
     set_uniform_φ!(sol, zero(T))
     update_boundary_ψ!(sol) # update entry ψ for all rays (including d, p and g dependence)
 
-    Threads.@threads for track in tracks_by_uid
+    for track in tracks_by_uid
         tally!(sol, prob, track, Forward)
         tally!(sol, prob, track, Backward)
     end
@@ -418,10 +426,10 @@ function add_q_to_φ!(sol::MoCSolution, prob::MoCProblem)
     volumes_copy = deepcopy(volumes)
     volumes_copy[volumes_copy .<= MIN_VOLUME] .= 1e30
 
-    @inbounds Threads.@threads for i in 1:NRegions
+    @inbounds for i in 1:NRegions
         xs = getxs(prob, i)
         @unpack Σt = xs
-        Threads.@threads for g in 1:NGroups
+        for g in 1:NGroups
             ig = @region_index(i, g)
             φ[ig] /= (Σt[g] * volumes_copy[i])
             φ[ig] += (4π * q[ig]) 
