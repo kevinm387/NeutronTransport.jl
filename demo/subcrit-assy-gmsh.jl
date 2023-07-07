@@ -21,7 +21,7 @@ end
 
 p = 1.0
 N = 10
-lc = 0.25
+lc = 1.0
 
 gmsh.initialize()
 gmsh.model.add("subcrit-assy")
@@ -29,8 +29,8 @@ gmsh.model.add("subcrit-assy")
 fuelTags = Int32[]
 sourceTags = Int32[]
 
-fuel_pos = [(5,5)]
-source_pos = [(8,8)]
+fuel_pos = [(5,6)]
+source_pos = [(8,3)]
 
 for i in 1:N, j in 1:N
     if (i, j) in fuel_pos

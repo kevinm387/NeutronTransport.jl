@@ -8,7 +8,7 @@ geometry = DiscreteModelFromFile(jsonfile)
 nφ = 4
 
 # azimuthal spacing
-δ = 1e-1
+δ = 0.1
 
 # boundary conditions
 bcs = BoundaryConditions(top=Reflective, bottom=Reflective, left=Reflective, right=Reflective)
@@ -69,12 +69,12 @@ xs = [water, source, fuel]
 prob = MoCProblem(tg, pq, xs)
 
 # define fixed source material
-fixed_sources = set_fixed_source_material(prob, "source", 1, 1)
+fixed_sources = set_fixed_source_material(prob, "source", 3, 1e-2)
 
 # solve
-sol = solve(prob, fixed_sources, debug=true)
+sol = solve(prob, fixed_sources, debug=true, max_iterations=2000)
 
 import Gridap: writevtk
 import Gridap.Geometry: get_triangulation
 trian = get_triangulation(tg.mesh.model)
-writevtk(trian, "subcrit-assy", cellfields=["g1" => sol(1), "g2" => sol(2)])
+writevtk(trian, "subcrit-assy", cellfields=[string(g) => sol(g) for g in 1:7])
